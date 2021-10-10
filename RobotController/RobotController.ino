@@ -6,10 +6,16 @@
 #include <Adafruit_MotorShield.h>
 #include "utility/Adafruit_MS_PWMServoDriver.h"
 
-
+//Motor Objects
+Adafruit_MotorShield AFMS = Adafruit_MotorShield();
+Adafruit_DCMotor *myMotor = AFMS.getMotor(1);
 void setup() {
-  // put your setup code here, to run once:
+  //DC Motor setup:
+  AFMS.begin();
   
+  //Test: Set motor speed and direction
+  myMotor->setSpeed(150); //can be between 0 and 255
+  myMotor->run(FORWARD);
 }
 
 void loop() {
