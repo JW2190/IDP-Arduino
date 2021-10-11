@@ -9,16 +9,20 @@
 //Motor Objects
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 Adafruit_DCMotor *myMotor = AFMS.getMotor(1);
+
+
 void setup() {
   //DC Motor setup:
   AFMS.begin();
   
-  //Test: Set motor speed and direction
-  myMotor->setSpeed(150); //can be between 0 and 255
-  myMotor->run(FORWARD);
+
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-
+  //Test: Set motor speed and direction
+  myMotor->setSpeed(150); //can be between 0 and 255
+  myMotor->run(FORWARD);
+  delay(2000);
+  Serial.print("Everything working properly");
 }
