@@ -49,58 +49,59 @@ void loop() {
   left_sensor_state = analogRead(left_sensor_pin);
   // Read State of Right Sensor from analog pin
   right_sensor_state = analogRead(right_sensor_pin);
+
+  Serial.println(left_sensor_state);
   
-  
-  // If RIGHT SENSOR HIGH (WHITE) and LEFT SENSOR LOW (BLACK) turn LEFT
-  if(right_sensor_state > SENSOR_THRESHOLD && left_sensor_state < SENSOR_THRESHOLD)
-    {
-      left_motor->run(FORWARD);
-      left_motor->setSpeed(HIGH_MOTOR_SPEED);
-      right_motor->run(FORWARD);
-      right_motor->setSpeed(LOW_MOTOR_SPEED);
-      Serial.println("turning right");
-
-    }
-
-
-  if(right_sensor_state < SENSOR_THRESHOLD && left_sensor_state > SESNOR_THRESHOLD)
-    {
-      Serial.println("turning left");
-      
-      digitalWrite (motorA1,HIGH);
-      digitalWrite(motorA2,LOW);                       
-      digitalWrite (motorB1,HIGH);
-      digitalWrite(motorB2,LOW);
-    
-      analogWrite (motorAspeed, turn_speed);
-      analogWrite (motorBspeed, vSpeed);
-    
-      delay(turn_delay);
-     }
-
-if(right_sensor_state > 500 && left_sensor_state > 500)
-{
-  Serial.println("going forward");
-//  digitalWrite (motorA2,LOW);
-//  digitalWrite(motorA1,HIGH);                       
-//  digitalWrite (motorB2,HIGH);
-//  digitalWrite(motorB1,LOW);
-
-//  analogWrite (motorAspeed, vSpeed);
-//  analogWrite (motorBspeed, vSpeed);
-
-  delay(turn_delay);
-  
-  }
-
-if(right_sensor_state < 500 && left_sensor_state < 500)
-{ 
-  Serial.println("stop");
-  
-  analogWrite (motorAspeed, 0);
-  analogWrite (motorBspeed, 0);
-  
-  }
+//  // If RIGHT SENSOR HIGH (WHITE) and LEFT SENSOR LOW (BLACK) turn LEFT
+//  if(right_sensor_state > SENSOR_THRESHOLD && left_sensor_state < SENSOR_THRESHOLD)
+//    {
+//      left_motor->run(FORWARD);
+//      left_motor->setSpeed(HIGH_MOTOR_SPEED);
+//      right_motor->run(FORWARD);
+//      right_motor->setSpeed(LOW_MOTOR_SPEED);
+//      Serial.println("turning right");
+//
+//    }
+//
+//
+//  if(right_sensor_state < SENSOR_THRESHOLD && left_sensor_state > SESNOR_THRESHOLD)
+//    {
+//      Serial.println("turning left");
+//      
+//      digitalWrite (motorA1,HIGH);
+//      digitalWrite(motorA2,LOW);                       
+//      digitalWrite (motorB1,HIGH);
+//      digitalWrite(motorB2,LOW);
+//    
+//      analogWrite (motorAspeed, turn_speed);
+//      analogWrite (motorBspeed, vSpeed);
+//    
+//      delay(turn_delay);
+//     }
+//
+//if(right_sensor_state > 500 && left_sensor_state > 500)
+//{
+//  Serial.println("going forward");
+////  digitalWrite (motorA2,LOW);
+////  digitalWrite(motorA1,HIGH);                       
+////  digitalWrite (motorB2,HIGH);
+////  digitalWrite(motorB1,LOW);
+//
+////  analogWrite (motorAspeed, vSpeed);
+////  analogWrite (motorBspeed, vSpeed);
+//
+//  delay(turn_delay);
+//  
+//  }
+//
+//if(right_sensor_state < 500 && left_sensor_state < 500)
+//{ 
+//  Serial.println("stop");
+//  
+//  analogWrite (motorAspeed, 0);
+//  analogWrite (motorBspeed, 0);
+//  
+//  }
 
 
 
