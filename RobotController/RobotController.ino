@@ -14,11 +14,7 @@ bool first=true;
 //Motor Objects
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 Adafruit_DCMotor *myMotor = AFMS.getMotor(1);
-<<<<<<< HEAD
-
-=======
 Adafruit_DCMotor *myMotor2 = AFMS.getMotor(2);
->>>>>>> 6735c0c6bce2fa3889dc6c9cd0dc509b9f05ae76
 
 void setup() {
   
@@ -29,19 +25,6 @@ void setup() {
   
   //DC Motor setup:
   AFMS.begin();
-<<<<<<< HEAD
-  
-
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-  //Test: Set motor speed and direction
-  myMotor->setSpeed(150); //can be between 0 and 255
-  myMotor->run(FORWARD);
-  delay(2000);
-  Serial.print("Everything working properly");
-=======
 }
 
 void loop() {
@@ -49,8 +32,8 @@ void loop() {
 
   if(first){
     first=false;
-    myMotor->setSpeed(255);
-    myMotor2->setSpeed(255);  
+    myMotor->setSpeed(150);
+    myMotor2->setSpeed(150);  
     myMotor->run(BACKWARD);
     myMotor2->run(BACKWARD);
     Serial.println("Set motor speed");
@@ -100,5 +83,4 @@ void loop() {
   delay(1000);
 
   */
->>>>>>> 6735c0c6bce2fa3889dc6c9cd0dc509b9f05ae76
 }
