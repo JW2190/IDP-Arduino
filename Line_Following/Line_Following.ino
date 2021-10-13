@@ -23,7 +23,7 @@ const int sensor_pins [2] = {A0, A1};
 
 
 // Sensor Values Global
-float BLACK_TO_WHITE_MULTIPLIER = 0.7;
+float BLACK_TO_WHITE_MULTIPLIER = 0.80;
 int SENSOR_THRESHOLD_L;
 int SENSOR_THRESHOLD_R;
 int sensor_state [2];
@@ -33,19 +33,19 @@ const int HIGH_MOTOR_SPEED = 255;
 const int LOW_MOTOR_SPEED = 150;
 
 //turn delay
-const int turn_delay = 100;
+const int turn_delay = 50;
 
 bool first = true;
-
 //temp for bug fixing
 int sensor_stateR;
 int sensor_stateL;
 
-bool MotorsOn = false;
+
+bool MotorsOn = true;
 
 //Toggle printing of info to console
-bool PRINT_SENSOR_STATES = false;
-bool PRINT_TURNING_DECISIONS = false;
+bool PRINT_SENSOR_STATES = true;
+bool PRINT_TURNING_DECISIONS = true;
 
 
 
@@ -126,9 +126,18 @@ void loop() {
     Serial.print("\t"); 
   }
   */
+  if(digitalRead(7)==1){
+    MotorsOn = !MotorsOn;
+  }
   
-  
-  Serial.print(digitalRead(7));
+  if(MotorsOn){
+    left_motor->run(BACKWARD);
+    right_motor->run(BACKWARD);
+  }
+  else{
+    left_motor->run(RELEASE);
+    right_motor->run(RELEASE);
+    }
 
   //If RIGHT SENSOR LOW (WHITE) and LEFT SENSOR HIGH (BLACK) turn LEFT
   if(sensor_stateR < SENSOR_THRESHOLD_R && sensor_stateL > SENSOR_THRESHOLD_L)
@@ -136,8 +145,8 @@ void loop() {
       if(PRINT_TURNING_DECISIONS){
         Serial.println("turning right");
       }
-      left_motor->setSpeed(HIGH_MOTOR_SPEED);
-      right_motor->setSpeed(LOW_MOTOR_SPEED);
+      left_motor->setSpeed(LOW_MOTOR_SPEED);
+      right_motor->setSpeed(HIGH_MOTOR_SPEED);
       delay(turn_delay);
     }
 
@@ -149,8 +158,8 @@ void loop() {
         Serial.println("turning left");
       }
       Serial.println("turning left");
-      left_motor->setSpeed(LOW_MOTOR_SPEED);
-      right_motor->setSpeed(HIGH_MOTOR_SPEED);
+      left_motor->setSpeed(HIGH_MOTOR_SPEED);
+      right_motor->setSpeed(LOW_MOTOR_SPEED);
       delay(turn_delay);
      }
      
