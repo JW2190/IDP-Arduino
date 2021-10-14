@@ -14,20 +14,12 @@ void setup() {
 void draw() {
   translate(width/2, height/2, 0);
   background(33);
-  
-  
-   calculateAxis(50);
-
-   cam.beginHUD();
-      drawAxis( 2 );
-   cam.endHUD();
-   
    
   textSize(22);
   text("Roll: " + int(roll) + "     Pitch: " + int(pitch), -100, 265);
   // Rotate the object
-  rotateX(radians(roll));
-  // rotateZ(radians(-pitch));
+  //rotateX(radians(roll));
+  rotateZ(radians(-pitch));
 
   // 3D 0bject
   textSize(30);  
@@ -55,39 +47,4 @@ void serialEvent (Serial myPort){
       yaw = float(items[2]);
     }
   }
-}
-
-void calculateAxis( float length )
-{
-   // Store the screen positions for the X, Y, Z and origin
-   axisXHud.set( screenX(length,0,0), screenY(length,0,0), 0 );
-   axisYHud.set( screenX(0,length,0), screenY(0,length,0), 0 );     
-   axisZHud.set( screenX(0,0,length), screenY(0,0,length), 0 );
-   axisOrgHud.set( screenX(0,0,0), screenY(0,0,0), 0 );
-}
-
-void drawAxis( float weight )
-{
-   pushStyle();   // Store the current style information
-
-     strokeWeight( weight );      // Line width
-
-     stroke( 255,   0,   0 );     // X axis color (Red)
-     line( axisOrgHud.x, axisOrgHud.y, axisXHud.x, axisXHud.y );
- 
-     stroke(   0, 255,   0 );
-     line( axisOrgHud.x, axisOrgHud.y, axisYHud.x, axisYHud.y );
-
-     stroke(   0,   0, 255 );
-     line( axisOrgHud.x, axisOrgHud.y, axisZHud.x, axisZHud.y );
-
-
-      fill(255);                   // Text color
-      textFont( axisLabelFont );   // Set the text font
-
-      text( "X", axisXHud.x, axisXHud.y );
-      text( "Y", axisYHud.x, axisYHud.y );
-      text( "Z", axisZHud.x, axisZHud.y );
-
-   popStyle();    // Recall the previously stored style information
 }
