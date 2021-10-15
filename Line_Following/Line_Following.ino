@@ -41,11 +41,11 @@ const int turn_delay = 5000;
 bool first = true;
 
 //Modes
-enum mode_frame{LEFT,RIGHT,STRAIGHT,STOP};
+enum mode_frame{LEFT=0,RIGHT=1,STRAIGHT=2,STOP=3};
 mode_frame mode = STRAIGHT;
 //DEBUG: Toggle functionality easily:
 bool MotorsOn = true;
-bool PRINT_SENSOR_STATES = true;
+bool PRINT_SENSOR_STATES = false;
 bool PRINT_TURNING_DECISIONS = true;
 
 
@@ -140,7 +140,6 @@ void loop() {
 //---------------------------------------------------------------------------------------------
 
 void setmotorspeed(int L_speed,int R_speed){
-  Serial.println("motor speeed set");
   left_motor->setSpeed(L_speed);
   right_motor->setSpeed(R_speed);
   
@@ -164,17 +163,21 @@ void calculatePID(){
 void follow_line(){
   switch(mode){
     case LEFT:
-    if(PRINT_TURNING_DECISIONS){Serial.println("turning right");}
+    if(PRINT_TURNING_DECISIONS){Serial.print("turning left----");Serial.println(mode);}
     setmotorspeed(LOW_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+    break;
     case RIGHT:
-    if(PRINT_TURNING_DECISIONS){Serial.println("turning left");}
+    if(PRINT_TURNING_DECISIONS){Serial.print("turning right----");Serial.println(mode);}
     setmotorspeed(HIGH_MOTOR_SPEED,LOW_MOTOR_SPEED);
+    break;
     case STRAIGHT:
-    if(PRINT_TURNING_DECISIONS){Serial.println("going forward");}
+    if(PRINT_TURNING_DECISIONS){Serial.print("going forward----");Serial.println(mode);}
     setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+    break;
     case STOP:
-    if(PRINT_TURNING_DECISIONS){Serial.println("stop");}
+    if(PRINT_TURNING_DECISIONS){Serial.print("stop----");Serial.println(mode);}
     setmotorspeed(0,0);
+    break;
   }
 }
 
@@ -184,12 +187,12 @@ void follow_line(){
 //Contains turn delay
 void calc_mode(){
   //If RIGHT SENSOR LOW (WHITE) and LEFT SENSOR LOW (WHITE) STOP
-  if(sensor_stateR < SENSOR_THRESHOLD_R && sensor_stateL < SENSOR_THRESHOLD_L){mode = STOP;return;}
+  if(sensor_stateR < SENSOR_THRESHOLD_R && sensor_stateL < SENSOR_THRESHOLD_L){mode = STOP;Serial.println("STOP");return;}
   //If RIGHT SENSOR LOW (WHITE) and LEFT SENSOR HIGH (BLACK) turn RIGHT
-  else if(sensor_stateR > SENSOR_THRESHOLD_R && sensor_stateL < SENSOR_THRESHOLD_L){mode = RIGHT;return;}
+  else if(sensor_stateR > SENSOR_THRESHOLD_R && sensor_stateL < SENSOR_THRESHOLD_L){mode = RIGHT;Serial.println("RIGHT");return;}
   //If RIGHT SENSOR HIGH (BLACK) and LEFT SENSOR HIGH (BLACK) stay STRAIGHT
-  else if(sensor_stateR > SENSOR_THRESHOLD_R && sensor_stateL > SENSOR_THRESHOLD_L){mode = STRAIGHT;return;}
+  else if(sensor_stateR > SENSOR_THRESHOLD_R && sensor_stateL > SENSOR_THRESHOLD_L){mode = STRAIGHT;Serial.println("STRAIGHT");return;}
   //If RIGHT SENSOR HIGH (BLACK) and LEFT SENSOR LOW (WHITE) turn LEFT
-  else if(sensor_stateR < SENSOR_THRESHOLD_R && sensor_stateL > SENSOR_THRESHOLD_L){mode = LEFT;return;}
+  else if(sensor_stateR < SENSOR_THRESHOLD_R && sensor_stateL > SENSOR_THRESHOLD_L){mode = LEFT;Serial.println("LEFT");return;}
   
 }
