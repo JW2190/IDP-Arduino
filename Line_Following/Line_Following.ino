@@ -14,12 +14,12 @@ For use with the Adafruit Motor Shield v2
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 
 // Select which 'port' M1, M2, M3 or M4. In this case, M1
-Adafruit_DCMotor *right_motor = AFMS.getMotor(1);
-Adafruit_DCMotor *left_motor = AFMS.getMotor(2);
+Adafruit_DCMotor *right_motor = AFMS.getMotor(2);
+Adafruit_DCMotor *left_motor = AFMS.getMotor(1);
 
 // Sensor Values Global
-const int NUM_OF_SENSORS = 3;
-float BLACK_TO_WHITE_MULTIPLIER = 0.80;
+const int NUM_OF_SENSORS = 4;
+float BLACK_TO_WHITE_MULTIPLIER = 0.8;
 int SENSOR_THRESHOLDS[NUM_OF_SENSORS]; //
 int SENSOR_THRESHOLD [NUM_OF_SENSORS];
 int sensor_state [NUM_OF_SENSORS];
@@ -29,11 +29,12 @@ int sensor_stateL;
 int sensor_stateM;
 
 //Sensor Connection
-const int sensor_pins [NUM_OF_SENSORS] = {A0, A1, A2}; //{L,,M,R}
+const int sensor_pins [NUM_OF_SENSORS] = {A0, A1, A2, A3}; //{L,,M,R}
 
 
 // Motor Speeds Global
 const int HIGH_MOTOR_SPEED = 255;
+const int HIGHER_MID_MOTOR_SPEED = 220;
 const int MID_MOTOR_SPEED = 200;
 const int LOW_MOTOR_SPEED = 150;
 
@@ -54,8 +55,8 @@ mode_frame mode = STRAIGHT;
 //DEBUG: Toggle functionality easily:
 bool MotorsOn = false;
 bool PRINT_SENSOR_STATES = false;
-bool PRINT_TURNING_DECISIONS = true;
-
+bool PRINT_TURNING_DECISIONS = false;
+bool PRINT_BIN_SENSOR_STATES = true;
 
 
 void setup() {
@@ -84,25 +85,28 @@ void setup() {
       for(byte x=0;x<NUM_OF_SENSORS;x++){
         sensor_state[x] = (sensor_state[x]+analogRead(sensor_pins[x]))/2;
         }
-      Serial.print("Left Black AVG: ");
+      Serial.print("Far Left Black AVG: ");
       Serial.print(sensor_state[0]);
-      Serial.print("     Mid Black AVG: "); 
+      Serial.print("     Left Black AVG: "); 
       Serial.println(sensor_state[1]);
       Serial.print("     Right Black AVG: "); 
-      Serial.println(sensor_state[2]);
+      Serial.print(sensor_state[2]);
+      Serial.print("     Far Right Black AVG: "); 
+      Serial.println(sensor_state[3]);
       delay(100);
     }
     for(byte x=0;x<NUM_OF_SENSORS;x++){
       SENSOR_THRESHOLD[x] = BLACK_TO_WHITE_MULTIPLIER * sensor_state[x];
-      
       }
     
-    Serial.print("Left Sensor Threshold: ");
+    Serial.print("Far Left Sensor Threshold: ");
     Serial.println(SENSOR_THRESHOLD[0]);
-    Serial.print("Mid Sensor Threshold: "); 
+    Serial.print("Left Sensor Threshold: "); 
     Serial.println(SENSOR_THRESHOLD[1]);
     Serial.print("Right Sensor Threshold: "); 
     Serial.println(SENSOR_THRESHOLD[2]);
+    Serial.print("Far right Sensor Threshold: "); 
+    Serial.println(SENSOR_THRESHOLD[3]);
     Serial.println("--------------------------");
     
 }
@@ -116,11 +120,17 @@ void loop() {
         sensor_state[x] = analogRead(sensor_pins[x]);;
         }
   if(PRINT_SENSOR_STATES){
+    Serial.print("FL: ");
+    Serial.print(sensor_state[0]);
+    Serial.print("------");
     Serial.print("L: ");
-    Serial.print(sensor_stateL);
+    Serial.print(sensor_state[1]);
     Serial.print("------");
     Serial.print("R: ");
-    Serial.println(sensor_stateR);
+    Serial.print(sensor_state[2]);
+    Serial.print("------");
+    Serial.print("FR: ");
+    Serial.println(sensor_state[3]);
   }
   
   if(first){ //might have to have this as running motor stuff in setup might be too early
@@ -149,7 +159,12 @@ void loop() {
 
   analoguetobin();
   calc_mode();
-  follow_line();
+  if(mode == STOP){
+    setmotorspeed(0,0);
+  }
+  else{
+    follow_line();
+    } 
   delay(turn_delay);
 }
 
@@ -178,13 +193,17 @@ void calculatePID(){
 
 void follow_line(){
   switch(error){
-    case 2:
+    case 3:
     if(PRINT_TURNING_DECISIONS){Serial.println("sharp left");}
     setmotorspeed(LOW_MOTOR_SPEED,HIGH_MOTOR_SPEED);
     break;
+    case 2:
+    if(PRINT_TURNING_DECISIONS){Serial.println("mid left");}
+    setmotorspeed(MID_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+    break;
     case 1:
     if(PRINT_TURNING_DECISIONS){Serial.println("slight left");}
-    setmotorspeed(MID_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+    setmotorspeed(HIGHER_MID_MOTOR_SPEED,HIGH_MOTOR_SPEED);
     break;
     case 0:
     if(PRINT_TURNING_DECISIONS){Serial.println("forward");}
@@ -192,26 +211,37 @@ void follow_line(){
     break;
     case -1:
     if(PRINT_TURNING_DECISIONS){Serial.println("slight right");}
-    setmotorspeed(HIGH_MOTOR_SPEED,MID_MOTOR_SPEED);
+    setmotorspeed(HIGH_MOTOR_SPEED,HIGHER_MID_MOTOR_SPEED);
     break;
     case -2:
+    if(PRINT_TURNING_DECISIONS){Serial.println("mid right");}
+    setmotorspeed(HIGH_MOTOR_SPEED,MID_MOTOR_SPEED);
+    break;
+    case -3:
     if(PRINT_TURNING_DECISIONS){Serial.println("sharp right");}
     setmotorspeed(HIGH_MOTOR_SPEED,LOW_MOTOR_SPEED);
     break;
   }
 }
 
+//--------------------------------------------------------------------------------
+//does not work
+void follow_line2(){
+  setmotorspeed(255*sensor_state[0]*0.8/SENSOR_THRESHOLD[0],255*sensor_state[2]*0.8/SENSOR_THRESHOLD[2]);
+  }
 
 //--------------------------------------------------------------------------------
 
-//1 0 0   2
-//1 1 0   1
-//0 1 0   0
-//0 1 1   -1
-//0 0 1   -2
+//1 0 0 0  3
+//1 1 0 0  2
+//0 1 0 0  1
+//0 1 1 0  0
+//0 0 1 0  -1
+//0 0 1 1  -2
+//0 0 0 1  -3
 
-//0 0 0
-//1 1 1
+//0 0 0 0 no line
+//1 1 1 1 line
 
 
 //Contains turn delay
@@ -226,16 +256,32 @@ void calc_mode(){
   //If RIGHT SENSOR HIGH (BLACK) and LEFT SENSOR LOW (WHITE) turn LEFT
   else if(sensor_stateR < SENSOR_THRESHOLD_R && sensor_stateL > SENSOR_THRESHOLD_L){mode = LEFT;return;}
   */
-  //1 0 0   2 sharp left
-  if(sensor_state_bin[0]==1 && sensor_state_bin[1]==0 && sensor_state_bin[2]==0){mode = LEFT;error = 2;return;}
-  //1 1 0   1 small left
-  else if(sensor_state_bin[0]==1 && sensor_state_bin[1]==1 && sensor_state_bin[2]==0){mode = LEFT;error = 1;return;}
-  //0 1 0   0 straight
-  else if(sensor_state_bin[0]==0 && sensor_state_bin[1]==1 && sensor_state_bin[2]==0){mode = STRAIGHT;error = 0;return;}
-  //0 1 1   -1 small right
-  else if(sensor_state_bin[0]==0 && sensor_state_bin[1]==1 && sensor_state_bin[2]==1){mode = RIGHT;error = -1;return;}
-  //0 0 1   -2 sharp right
-  else if(sensor_state_bin[0]==0 && sensor_state_bin[1]==0 && sensor_state_bin[2]==1){mode = RIGHT;error = -2;return;}
+  //1 0 0 0  3 sharp left
+  if(sensor_state_bin[0]==1 && sensor_state_bin[1]==0 && sensor_state_bin[2]==0 && sensor_state_bin[3]==0){mode = LEFT;error = 3;return;}
+  
+  //1 1 0 0  2 mid left
+  else if(sensor_state_bin[0]==1 && sensor_state_bin[1]==1 && sensor_state_bin[2]==0 && sensor_state_bin[3]==0){mode = LEFT;error = 2;return;}
+  
+  //0 1 0 0  1 slight left
+  else if(sensor_state_bin[0]==0 && sensor_state_bin[1]==1 && sensor_state_bin[2]==0 && sensor_state_bin[3]==0){mode = LEFT;error = 1;return;}
+  
+  //0 1 1 0  0 straight
+  else if(sensor_state_bin[0]==0 && sensor_state_bin[1]==1 && sensor_state_bin[2]==1 && sensor_state_bin[3]==0){mode = STRAIGHT;error = 0;return;}
+
+  //0 0 0 0  0 straight
+  else if(sensor_state_bin[0]==0 && sensor_state_bin[1]==0 && sensor_state_bin[2]==0 && sensor_state_bin[3]==0){mode = STRAIGHT;error = 0;return;}
+  
+  //0 0 1 0  -1 small right
+  else if(sensor_state_bin[0]==0 && sensor_state_bin[1]==0 && sensor_state_bin[2]==1 && sensor_state_bin[3]==0){mode = RIGHT;error = -1;return;}
+  
+  //0 0 1 1  -2 mid right
+  else if(sensor_state_bin[0]==0 && sensor_state_bin[1]==0 && sensor_state_bin[2]==1 && sensor_state_bin[3]==1){mode = RIGHT;error = -2;return;}
+  
+  //0 0 0 1  -3 sharp right
+  else if(sensor_state_bin[0]==0 && sensor_state_bin[1]==0 && sensor_state_bin[2]==0 && sensor_state_bin[3]==1){mode = RIGHT;return;}
+  
+  //0 0 0 0  stop
+  else if(sensor_state_bin[0]==0 && sensor_state_bin[1]==0 && sensor_state_bin[2]==0 && sensor_state_bin[3]==0){mode = STOP;error = 1;return;}
 }
 
 //--------------------------------------------------------------------------------
@@ -244,15 +290,17 @@ void calc_mode(){
 void analoguetobin(){
   for(byte x=0;x<NUM_OF_SENSORS;x++){
     if(sensor_state[x] < SENSOR_THRESHOLD[x]){
-      sensor_state_bin[x] = 0;
+      sensor_state_bin[x] = 1;
     }
     else{
-      sensor_state_bin[x] = 1;
+      sensor_state_bin[x] = 0;
       }
       //Serial.println(sensor_state_bin[x]);
     }
-    Serial.print(sensor_state_bin[0]);
-    Serial.print(sensor_state_bin[1]);
-    Serial.println(sensor_state_bin[2]);
-    
+    if(PRINT_BIN_SENSOR_STATES){
+      Serial.print(sensor_state_bin[0]);
+      Serial.print(sensor_state_bin[1]);
+      Serial.print(sensor_state_bin[2]);
+      Serial.println(sensor_state_bin[3]);
+      }
   }
