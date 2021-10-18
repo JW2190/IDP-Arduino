@@ -18,23 +18,13 @@ int sensors[2] = {0, 0};
 
 int sensors_blk_sum[2] = {0, 0}; 
 int sensors_blk_avg[2] = {0, 0};
-
-
 int sensors_threshold[2] = {0, 0};
-
-
 int sensors_wht_sum[2] = {0, 0}; 
 int sensors_wht_avg[2] = {0, 0};
 
 
 const int SAMPLES = 50;
 const float BLACK_TO_WHITE_MULTIPLIER = 0.8;
-
-
-bool all_white = false;
-
-
-
 
 void setup() {
   Serial.begin(9600); 
