@@ -126,7 +126,7 @@ void calibration(int number_of_sensors)
     int sensors_wht_sum[number_of_sensors] = {0, 0, 0, 0}; 
     int sensors_wht_avg[number_of_sensors] = {0, 0, 0, 0};
     const int SAMPLES = 150;
-    const float BLACK_TO_WHITE_MULTIPLIER = 0.85;
+    const float BLACK_TO_WHITE_MULTIPLIER = 0.5;
     int truth_counter = 0;
 
 
