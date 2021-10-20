@@ -120,16 +120,16 @@ void loop() {
         sensor_state[x] = analogRead(sensor_pins[x]);;
         }
   if(PRINT_SENSOR_STATES){
-    Serial.print("FL: ");
+    //Serial.print("FL: ");
     Serial.print(sensor_state[0]);
-    Serial.print("------");
-    Serial.print("L: ");
+    //Serial.print("------");
+    //Serial.print("L: ");
     Serial.print(sensor_state[1]);
-    Serial.print("------");
-    Serial.print("R: ");
+    //Serial.print("------");
+    //Serial.print("R: ");
     Serial.print(sensor_state[2]);
-    Serial.print("------");
-    Serial.print("FR: ");
+    //Serial.print("------");
+    //Serial.print("FR: ");
     Serial.println(sensor_state[3]);
   }
   

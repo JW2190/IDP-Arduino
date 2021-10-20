@@ -30,18 +30,21 @@ const int sensor_pins [NUM_OF_SENSORS] = {8,9,10,11}; //{L,,M,R}
 
 // Motor Speeds Global
 const int HIGH_MOTOR_SPEED = 255;
-const int HIGHER_MID_MOTOR_SPEED = 220;
-const int MID_MOTOR_SPEED = 200;
-const int LOW_MOTOR_SPEED = 150;
+const int HIGHER_MID_MOTOR_SPEED = 200;
+const int MID_MOTOR_SPEED = 150;
+const int LOW_MOTOR_SPEED = 100;
 
 //turn delay
-const int turn_delay = 50;
+const int turn_delay = 20; 
 
-//run 1 execution code in loop() (needed for slightly later start of motors)
-bool first = true;
+//Junction Handling
+int JUNCTIONS_FOUND = 0;
 
 //PID objects
-float P ,I ,D ,PIDvalue, previousError,Kp, Ki, Kd;
+float P ,I ,D ,PIDvalue, previousError;
+float Kd = 10;
+float Ki = 0.2;
+float Kp = 8; //max value can be is 18 for average motor speed to be 200
 int error = 0;
 
 //Modes
@@ -50,7 +53,7 @@ mode_frame mode = STRAIGHT;
 
 //DEBUG: Toggle functionality easily:
 bool MotorsOn = false;
-bool PRINT_SENSOR_STATES = true;
+bool PRINT_SENSOR_STATES = false;
 bool PRINT_TURNING_DECISIONS = false;
 
 
@@ -82,22 +85,16 @@ void loop() {
         sensor_state[x] = digitalRead(sensor_pins[x]);
         }
   if(PRINT_SENSOR_STATES){
-    Serial.print("FL: ");
     Serial.print(sensor_state[0]);
-    Serial.print("------");
-    Serial.print("L: ");
     Serial.print(sensor_state[1]);
-    Serial.print("------");
-    Serial.print("R: ");
     Serial.print(sensor_state[2]);
-    Serial.print("------");
-    Serial.print("FR: ");
     Serial.println(sensor_state[3]);
   }
   
 
   //DEBUG: toggling motors on and off based on button input
   if(digitalRead(7)==1){
+    Serial.println("Button Pressed");
     MotorsOn = !MotorsOn;
   }
   if(MotorsOn){
@@ -110,11 +107,22 @@ void loop() {
     }
 
   calc_mode();
+
+  //handle junction detection
   if(mode == STOP){
-    setmotorspeed(0,0);
-    delay(1000);
-  }
+    
+    Serial.println(JUNCTIONS_FOUND);
+      setmotorspeed(0,0);
+    switch(JUNCTIONS_FOUND){
+      case 2: 
+      turn_180();
+      break;
+      }
+      setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED); //Stop junction from being found again
+      delay(500); //Stop junction from being found again
+    }
   else{
+    calculatePID();
     follow_line();
     } 
   delay(turn_delay);
@@ -126,6 +134,21 @@ void loop() {
 void setmotorspeed(int L_speed,int R_speed){
   left_motor->setSpeed(L_speed);
   right_motor->setSpeed(R_speed);
+  
+}
+//---------------------------------------------------------------------------------------------
+
+void setpidmotorspeed(){
+  //left_motor->setSpeed(200-PIDvalue);
+  //right_motor->setSpeed(200+PIDvalue);
+  if(error==0){
+    left_motor->setSpeed(255);
+    right_motor->setSpeed(255);
+    }
+  else{
+    left_motor->setSpeed(PIDvalue*255/Kp);
+    right_motor->setSpeed(-PIDvalue*255/Kp);
+    }
   
 }
 
@@ -216,8 +239,34 @@ void calc_mode(){
   //0 0 0 1  -3 sharp right
   else if(sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==0 && sensor_state[3]==1){mode = RIGHT; error = -3;return;}
   
-  //0 0 0 0  stop
-  else if(sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==0 && sensor_state[3]==0){mode = STOP;error = 0;return;}
+  //1 1 1 1  stop
+  else if(sensor_state[0]==1 && sensor_state[1]==1 && sensor_state[2]==1 && sensor_state[3]==1){mode = STOP;error = 0;JUNCTIONS_FOUND++;return;}
 }
 
 //--------------------------------------------------------------------------------
+
+void turn_right(){
+  setmotorspeed(0,0);
+  Serial.print("Turning right");
+  left_motor->run(BACKWARD);
+  right_motor->run(FORWARD);
+  setmotorspeed(255,255);
+  delay(850); //let the turning go for a bit before we check for the stop point
+  setmotorspeed(0,0);
+  left_motor->run(BACKWARD);
+  right_motor->run(BACKWARD);
+  
+  }
+//-------------------------------------------------------------------------------
+
+void turn_180(){
+  setmotorspeed(0,0);
+  Serial.print("Turning 180");
+  left_motor->run(BACKWARD);
+  right_motor->run(FORWARD);
+  setmotorspeed(255,255);
+  delay(1700); //let the turning go for a bit before we check for the stop point
+  setmotorspeed(0,0);
+  left_motor->run(BACKWARD);
+  right_motor->run(BACKWARD);
+  }
