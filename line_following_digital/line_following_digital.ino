@@ -1,11 +1,4 @@
-/*
-This is a test sketch for the Adafruit assembled Motor Shield for Arduino v2
-It won't work with v1.x motor shields! Only for the v2's with built in PWM
-control
-
-For use with the Adafruit Motor Shield v2
----->  http://www.adafruit.com/products/1438
-*/
+#include <Servo.h>
 #include <Wire.h>
 #include <Adafruit_MotorShield.h>
 #include "utility/Adafruit_MS_PWMServoDriver.h"
@@ -27,24 +20,30 @@ int sensor_state [NUM_OF_SENSORS];
 //Sensor Connection
 const int sensor_pins [NUM_OF_SENSORS] = {8,9,10,11}; //{L,,M,R}
 
+//Amber flashing light
+int amber_light_counter = 0;
+bool amber_light_on = false;
+
+//Servo
+Servo myservo;
 
 // Motor Speeds Global
 const int HIGH_MOTOR_SPEED = 255;
 const int HIGHER_MID_MOTOR_SPEED = 200;
 const int MID_MOTOR_SPEED = 150;
-const int LOW_MOTOR_SPEED = 100;
+const int LOW_MOTOR_SPEED = 0;
 
 //turn delay
-const int turn_delay = 20; 
+const int turn_delay = 20; //**DO NOT CHANGE**
 
 //Junction Handling
 int JUNCTIONS_FOUND = 0;
 
 //PID objects
 float P ,I ,D ,PIDvalue, previousError;
-float Kd = 10;
-float Ki = 0.2;
-float Kp = 8; //max value can be is 18 for average motor speed to be 200
+float Kd = 30;
+float Ki = 1;
+float Kp = 30; //max value can be is 18 for average motor speed to be 200
 int error = 0;
 
 //Modes
@@ -59,11 +58,18 @@ bool PRINT_TURNING_DECISIONS = false;
 
 void setup() {
   Serial.begin(9600);           // set up Serial library at 9600 bps
-  Serial.println("Adafruit Motorshield v2 - DC Motor test!");
+  Serial.println("---------------SETUP---------------");
+
+  //Set amber flashing light pin
+  pinMode(1, OUTPUT);
   
   //set motor toggle button
   pinMode(7, INPUT);
 
+  // attaches the servo on pin 6 to the servo object and reset rotation if needed
+  myservo.attach(6);  
+  myservo.write(180);
+  
   //set line sensor input pins
   for(byte i=0;i<NUM_OF_SENSORS;i++){
     pinMode(sensor_pins[i], INPUT);
@@ -79,7 +85,22 @@ void setup() {
 //------------------------------------------------------------------------------------------
 
 void loop() {
+  
+  //Amber flashing light requirement
+  amber_light_counter++;
+  if(amber_light_on == true && amber_light_counter==1){
+    Serial.println("Light Off");
+    digitalWrite(1,LOW);
+    amber_light_on = false;
+    }
+  if(amber_light_counter >= 500/turn_delay && mode!=STOP){
+    Serial.println("Light On");
+    amber_light_counter = 0;
+    digitalWrite(1,HIGH);
+    amber_light_on = true;
+    }
 
+  
   //READ SENSOR STATES
   for(byte x=0;x<NUM_OF_SENSORS;x++){
         sensor_state[x] = digitalRead(sensor_pins[x]);
@@ -112,7 +133,7 @@ void loop() {
   if(mode == STOP){
     
     Serial.println(JUNCTIONS_FOUND);
-      setmotorspeed(0,0);
+    setmotorspeed(0,0);
     switch(JUNCTIONS_FOUND){
       case 2: 
       turn_180();
@@ -124,6 +145,7 @@ void loop() {
   else{
     calculatePID();
     follow_line();
+    //setpidmotorspeed();
     } 
   delay(turn_delay);
 }
@@ -139,17 +161,22 @@ void setmotorspeed(int L_speed,int R_speed){
 //---------------------------------------------------------------------------------------------
 
 void setpidmotorspeed(){
+  Serial.print("PIDvalue:");
+  Serial.println(PIDvalue);
   //left_motor->setSpeed(200-PIDvalue);
   //right_motor->setSpeed(200+PIDvalue);
-  if(error==0){
+  if(PIDvalue == 0){
     left_motor->setSpeed(255);
     right_motor->setSpeed(255);
     }
-  else{
-    left_motor->setSpeed(PIDvalue*255/Kp);
-    right_motor->setSpeed(-PIDvalue*255/Kp);
+  else if(PIDvalue>0){ //positive when vehicle should turn LEFT
+    left_motor->setSpeed(255-PIDvalue);
+    right_motor->setSpeed(255);
+    } 
+  else if(PIDvalue<0){ //negative when vehicle should turn RIGHT
+    left_motor->setSpeed(255);
+    right_motor->setSpeed(255+PIDvalue);
     }
-  
 }
 
 //--------------------------------------------------------------------------------
@@ -269,4 +296,18 @@ void turn_180(){
   setmotorspeed(0,0);
   left_motor->run(BACKWARD);
   right_motor->run(BACKWARD);
+  }
+
+//-------------------------------------------------------------------------------
+
+void collect_block(){
+  //Move forwards until the first junction is reached
+  setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+  for(byte i; i<10000;i++){
+    calc_mode();
+    if(mode == STOP){
+      break;
+      }
+    }
+  
   }
