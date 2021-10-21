@@ -1,19 +1,26 @@
+int counter =0;
+bool covered;
+
 void setup() {
   // put your setup code here, to run once:
-  pinMode(5,OUTPUT);
-  pinMode(4,INPUT);
+  pinMode(3,OUTPUT);
+  pinMode(2,INPUT);
   Serial.begin(9600);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  Serial.print(digitalRead(4));
-  if(digitalRead(4)==HIGH){
-    digitalWrite(5,HIGH);
+  Serial.println(counter);
+  if(digitalRead(2)==HIGH){
+    if(covered==false){
+      covered = true;
+      counter++;
+      }
+    digitalWrite(3,HIGH);
     }
     else{
-      digitalWrite(5,LOW);
+      covered = false;
+      digitalWrite(3,LOW);
       
       }
-  
 }

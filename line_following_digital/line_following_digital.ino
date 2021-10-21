@@ -29,9 +29,9 @@ Servo myservo;
 
 // Motor Speeds Global
 const int HIGH_MOTOR_SPEED = 255;
-const int HIGHER_MID_MOTOR_SPEED = 200;
+const int HIGHER_MID_MOTOR_SPEED = 180;
 const int MID_MOTOR_SPEED = 150;
-const int LOW_MOTOR_SPEED = 0;
+const int LOW_MOTOR_SPEED = 100;
 
 //turn delay
 const int turn_delay = 20; //**DO NOT CHANGE**
@@ -66,7 +66,15 @@ void setup() {
   //set motor toggle button
   pinMode(7, INPUT);
 
-  // attaches the servo on pin 6 to the servo object and reset rotation if needed
+  //Wheel encoders:
+  //LEFT:
+  pinMode(5,OUTPUT); //For LED
+  pinMode(4,INPUT); // Actual Encoder reading
+  //RIGHT:
+  pinMode(3,OUTPUT); //For LED
+  pinMode(2,INPUT); // Actual Encoder reading
+  
+  // SERVO: attaches the servo on pin 6 to the servo object and reset rotation if needed
   myservo.attach(6);  
   myservo.write(180);
   
@@ -78,23 +86,21 @@ void setup() {
 
   //ENABLE MOTOR TURNING
     if(MotorsOn){
-      left_motor->run(BACKWARD);
-      right_motor->run(BACKWARD);
+      left_motor->run(FORWARD);
+      right_motor->run(FORWARD);
       }
 }
 //------------------------------------------------------------------------------------------
 
 void loop() {
   
-  //Amber flashing light requirement
+  //Amber flashing light requirement: keeps light on for 1 turn_delay every 0.5 seconds
   amber_light_counter++;
-  if(amber_light_on == true && amber_light_counter==1){
-    Serial.println("Light Off");
+  if(amber_light_on == true){ //turns light off if still on
     digitalWrite(1,LOW);
     amber_light_on = false;
     }
-  if(amber_light_counter >= 500/turn_delay && mode!=STOP){
-    Serial.println("Light On");
+  if(amber_light_counter >= 500/turn_delay && mode!=STOP){ //turn light on every 0.5 seconds
     amber_light_counter = 0;
     digitalWrite(1,HIGH);
     amber_light_on = true;
@@ -119,8 +125,8 @@ void loop() {
     MotorsOn = !MotorsOn;
   }
   if(MotorsOn){
-    left_motor->run(BACKWARD);
-    right_motor->run(BACKWARD);
+    left_motor->run(FORWARD);
+    right_motor->run(FORWARD);
   }
   else{
     left_motor->run(RELEASE);
@@ -135,7 +141,7 @@ void loop() {
     Serial.println(JUNCTIONS_FOUND);
     setmotorspeed(0,0);
     switch(JUNCTIONS_FOUND){
-      case 2: 
+      case 3: 
       turn_180();
       break;
       }
@@ -206,14 +212,23 @@ void follow_line(){
     case 1:
     if(PRINT_TURNING_DECISIONS){Serial.println("slight left");}
     setmotorspeed(HIGHER_MID_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+    //left_motor->run(BACKWARD);
+    //right_motor->run(FORWARD);
+    //setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
     break;
     case 0:
     if(PRINT_TURNING_DECISIONS){Serial.println("forward");}
     setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+    //left_motor->run(FORWARD);
+    //right_motor->run(FORWARD);
+    //setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
     break;
     case -1:
     if(PRINT_TURNING_DECISIONS){Serial.println("slight right");}
     setmotorspeed(HIGH_MOTOR_SPEED,HIGHER_MID_MOTOR_SPEED);
+    //left_motor->run(FORWARD);
+    //right_motor->run(BACKWARD);
+    //setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
     break;
     case -2:
     if(PRINT_TURNING_DECISIONS){Serial.println("mid right");}
@@ -275,13 +290,13 @@ void calc_mode(){
 void turn_right(){
   setmotorspeed(0,0);
   Serial.print("Turning right");
-  left_motor->run(BACKWARD);
-  right_motor->run(FORWARD);
+  left_motor->run(FORWARD);
+  right_motor->run(BACKWARD);
   setmotorspeed(255,255);
   delay(850); //let the turning go for a bit before we check for the stop point
   setmotorspeed(0,0);
-  left_motor->run(BACKWARD);
-  right_motor->run(BACKWARD);
+  left_motor->run(FORWARD);
+  right_motor->run(FORWARD);
   
   }
 //-------------------------------------------------------------------------------
@@ -289,13 +304,13 @@ void turn_right(){
 void turn_180(){
   setmotorspeed(0,0);
   Serial.print("Turning 180");
-  left_motor->run(BACKWARD);
-  right_motor->run(FORWARD);
+  left_motor->run(FORWARD);
+  right_motor->run(BACKWARD);
   setmotorspeed(255,255);
   delay(1700); //let the turning go for a bit before we check for the stop point
   setmotorspeed(0,0);
-  left_motor->run(BACKWARD);
-  right_motor->run(BACKWARD);
+  left_motor->run(FORWARD);
+  right_motor->run(FORWARD);
   }
 
 //-------------------------------------------------------------------------------
