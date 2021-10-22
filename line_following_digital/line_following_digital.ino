@@ -16,7 +16,8 @@ float BLACK_TO_WHITE_MULTIPLIER = 0.8;
 int SENSOR_THRESHOLDS[NUM_OF_SENSORS]; //
 int SENSOR_THRESHOLD [NUM_OF_SENSORS];
 int sensor_state [NUM_OF_SENSORS];
-
+bool priority_timer = false;
+int priority_counter = 0;
 //Sensor Connection
 const int sensor_pins [NUM_OF_SENSORS] = {8,9,10,11}; //{L,,M,R}
 
@@ -34,7 +35,7 @@ const int MID_MOTOR_SPEED = 150;
 const int LOW_MOTOR_SPEED = 100;
 
 //turn delay
-const int turn_delay = 20; //**DO NOT CHANGE**
+const int turn_delay = 20;
 
 //Junction Handling
 int JUNCTIONS_FOUND = 0;
@@ -93,9 +94,12 @@ void setup() {
 //------------------------------------------------------------------------------------------
 
 void loop() {
-  
+  Serial.println(priority_counter);
   //Amber flashing light requirement: keeps light on for 1 turn_delay every 0.5 seconds
   amber_light_counter++;
+  if(priority_timer==true){
+    priority_counter++;
+    }
   if(amber_light_on == true){ //turns light off if still on
     digitalWrite(1,LOW);
     amber_light_on = false;
@@ -106,7 +110,11 @@ void loop() {
     amber_light_on = true;
     }
 
-  
+  if(priority_counter >= 200/turn_delay){ //turn light on every 0.5 seconds
+    priority_counter=0;
+    priority_timer==false;
+    }
+    
   //READ SENSOR STATES
   for(byte x=0;x<NUM_OF_SENSORS;x++){
         sensor_state[x] = digitalRead(sensor_pins[x]);
@@ -149,8 +157,8 @@ void loop() {
       delay(500); //Stop junction from being found again
     }
   else{
-    calculatePID();
-    follow_line();
+    //calculatePID();
+    //follow_line();
     //setpidmotorspeed();
     } 
   delay(turn_delay);
@@ -200,45 +208,56 @@ void calculatePID(){
 //--------------------------------------------------------------------------------
 
 void follow_line(){
-  switch(error){
+  if(MotorsOn){
+    switch(error){
     case 3:
     if(PRINT_TURNING_DECISIONS){Serial.println("sharp left");}
-    setmotorspeed(LOW_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+    left_motor->run(BACKWARD); //was back
+    right_motor->run(FORWARD); 
+    setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
     break;
     case 2:
     if(PRINT_TURNING_DECISIONS){Serial.println("mid left");}
-    setmotorspeed(MID_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+    //setmotorspeed(MID_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+    left_motor->run(BACKWARD);
+    right_motor->run(FORWARD);
+    setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
     break;
     case 1:
     if(PRINT_TURNING_DECISIONS){Serial.println("slight left");}
-    setmotorspeed(HIGHER_MID_MOTOR_SPEED,HIGH_MOTOR_SPEED);
-    //left_motor->run(BACKWARD);
-    //right_motor->run(FORWARD);
-    //setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+    //setmotorspeed(HIGHER_MID_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+    left_motor->run(FORWARD);
+    right_motor->run(BACKWARD);
+    setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
     break;
     case 0:
     if(PRINT_TURNING_DECISIONS){Serial.println("forward");}
+    left_motor->run(FORWARD);
+    right_motor->run(FORWARD);
     setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
-    //left_motor->run(FORWARD);
-    //right_motor->run(FORWARD);
-    //setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
     break;
     case -1:
     if(PRINT_TURNING_DECISIONS){Serial.println("slight right");}
-    setmotorspeed(HIGH_MOTOR_SPEED,HIGHER_MID_MOTOR_SPEED);
-    //left_motor->run(FORWARD);
-    //right_motor->run(BACKWARD);
-    //setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+    //setmotorspeed(HIGH_MOTOR_SPEED,HIGHER_MID_MOTOR_SPEED);
+    left_motor->run(BACKWARD);
+    right_motor->run(FORWARD);
+    setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
     break;
     case -2:
     if(PRINT_TURNING_DECISIONS){Serial.println("mid right");}
-    setmotorspeed(HIGH_MOTOR_SPEED,MID_MOTOR_SPEED);
+    //setmotorspeed(HIGH_MOTOR_SPEED,MID_MOTOR_SPEED);
+    left_motor->run(FORWARD);
+    right_motor->run(BACKWARD);
+    setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
     break;
     case -3:
     if(PRINT_TURNING_DECISIONS){Serial.println("sharp right");}
-    setmotorspeed(HIGH_MOTOR_SPEED,LOW_MOTOR_SPEED);
+    left_motor->run(FORWARD);
+    right_motor->run(BACKWARD); //was back
+    setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
     break;
-  }
+    } 
+  }  
 }
 
 //--------------------------------------------------------------------------------
@@ -257,32 +276,102 @@ void follow_line(){
 
 //Contains turn delay
 void calc_mode(){
-  //1 0 0 0  3 sharp left
-  if(sensor_state[0]==1 && sensor_state[1]==0 && sensor_state[2]==0 && sensor_state[3]==0){mode = LEFT;error = 3;return;}
+  if(MotorsOn){
+    if(sensor_state[0]==1 && sensor_state[1]==1 && sensor_state[2]==0 && sensor_state[3]==0){
+      mode = LEFT;
+      if(PRINT_TURNING_DECISIONS){Serial.println("sharp left");}
+      left_motor->run(BACKWARD); //was back
+      right_motor->run(FORWARD); 
+      setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+      return;}
+    
+    //1 1 0 0  2 mid left
+    if(sensor_state[0]==1 && sensor_state[1]==0 && sensor_state[2]==0 && sensor_state[3]==0){
+        mode = LEFT;
+        if(PRINT_TURNING_DECISIONS){Serial.println("mid left");}
+        left_motor->run(BACKWARD);
+        right_motor->run(FORWARD);
+        setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+        return;
+        //}
+      }
+    
+    //0 1 0 0  1 slight left
+    else if(sensor_state[0]==0 && sensor_state[1]==1 && sensor_state[2]==0 && sensor_state[3]==0){
+      mode = LEFT;
+      if(PRINT_TURNING_DECISIONS){Serial.println("slight left");}
+      //setmotorspeed(HIGHER_MID_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+      left_motor->run(FORWARD);
+      right_motor->run(BACKWARD);
+      setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+      }
+    
+    //0 1 1 0  0 straight
+    else if(sensor_state[0]==0 && sensor_state[1]==1 && sensor_state[2]==1 && sensor_state[3]==0){
+      mode = STRAIGHT;
+      if(PRINT_TURNING_DECISIONS){Serial.println("forward");}
+      left_motor->run(FORWARD);
+      right_motor->run(FORWARD);
+      setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+      return;}
   
-  //1 1 0 0  2 mid left
-  else if(sensor_state[0]==1 && sensor_state[1]==1 && sensor_state[2]==0 && sensor_state[3]==0){mode = LEFT;error = 2;return;}
+    //0 0 0 0  0 straight
+    else if(sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==0 && sensor_state[3]==0){
+      mode = STRAIGHT;
+      if(PRINT_TURNING_DECISIONS){Serial.println("forward");}
+      left_motor->run(FORWARD);
+      right_motor->run(FORWARD);
+      setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+      return;}
   
-  //0 1 0 0  1 slight left
-  else if(sensor_state[0]==0 && sensor_state[1]==1 && sensor_state[2]==0 && sensor_state[3]==0){mode = LEFT;error = 1;return;}
-  
-  //0 1 1 0  0 straight
-  else if(sensor_state[0]==0 && sensor_state[1]==1 && sensor_state[2]==1 && sensor_state[3]==0){mode = STRAIGHT;error = 0;return;}
+    else if(sensor_state[0]==1 && sensor_state[1]==0 && sensor_state[2]==0 && sensor_state[3]==1){
+      /*
+      mode = STRAIGHT;
+      if(PRINT_TURNING_DECISIONS){Serial.println("forward");}
+      left_motor->run(FORWARD);
+      right_motor->run(FORWARD);
+      setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+      */
+      mode = STOP;
+      JUNCTIONS_FOUND++;
+      left_motor->run(FORWARD);
+      right_motor->run(FORWARD);
+      setmotorspeed(0,0);
+      return;}
+    
+    //0 0 1 0  -1 small right
+    else if(sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==1 && sensor_state[3]==0){
+      mode = RIGHT;
+      if(PRINT_TURNING_DECISIONS){Serial.println("slight right");}
+      left_motor->run(BACKWARD);
+      right_motor->run(FORWARD);
+      setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+      return;}
+    
+    //0 0 1 1  -2 mid right
+    else if(sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==0 && sensor_state[3]==1){
+      mode = RIGHT;
+      if(PRINT_TURNING_DECISIONS){Serial.println("mid right");}
+      left_motor->run(FORWARD);
+      right_motor->run(BACKWARD);
+      setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+      return;
+      }
+    
+    //0 0 0 1  -3 sharp right
+    else if(sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==1 && sensor_state[3]==1){
+      mode = RIGHT;
+      if(PRINT_TURNING_DECISIONS){Serial.println("sharp right");}
+      left_motor->run(FORWARD);
+      right_motor->run(BACKWARD); //was back
+      setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+      return;
+      }
 
-  //0 0 0 0  0 straight
-  else if(sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==0 && sensor_state[3]==0){mode = STRAIGHT;error = 0;return;}
-  
-  //0 0 1 0  -1 small right
-  else if(sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==1 && sensor_state[3]==0){mode = RIGHT;error = -1;return;}
-  
-  //0 0 1 1  -2 mid right
-  else if(sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==1 && sensor_state[3]==1){mode = RIGHT;error = -2;return;}
-  
-  //0 0 0 1  -3 sharp right
-  else if(sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==0 && sensor_state[3]==1){mode = RIGHT; error = -3;return;}
+  }
   
   //1 1 1 1  stop
-  else if(sensor_state[0]==1 && sensor_state[1]==1 && sensor_state[2]==1 && sensor_state[3]==1){mode = STOP;error = 0;JUNCTIONS_FOUND++;return;}
+  //else if(sensor_state[0]==1 && sensor_state[1]==0 && sensor_state[2]==0 && sensor_state[3]==1){mode = STOP;error = 0;JUNCTIONS_FOUND++;return;}
 }
 
 //--------------------------------------------------------------------------------
@@ -307,7 +396,15 @@ void turn_180(){
   left_motor->run(FORWARD);
   right_motor->run(BACKWARD);
   setmotorspeed(255,255);
-  delay(1700); //let the turning go for a bit before we check for the stop point
+  delay(3000); //let the turning go for a bit before we check for the stop point
+  for(int i;i<100000;i++){
+    for(byte x=0;x<NUM_OF_SENSORS;x++){
+        sensor_state[x] = digitalRead(sensor_pins[x]);
+        }
+    if(sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==1 && sensor_state[3]==0){
+      break;
+    }
+    }
   setmotorspeed(0,0);
   left_motor->run(FORWARD);
   right_motor->run(FORWARD);
@@ -319,7 +416,7 @@ void collect_block(){
   //Move forwards until the first junction is reached
   setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
   for(byte i; i<10000;i++){
-    calc_mode();
+    
     if(mode == STOP){
       break;
       }
