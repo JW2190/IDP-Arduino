@@ -32,6 +32,12 @@ const int turn_delay = 20;
 
 //Junction Handling
 int JUNCTIONS_FOUND = 0;
+bool lock_junctions = false;
+int junction_locking_counter = 0;
+
+//Detect metal:
+bool metal_block = true;
+int deposited = 0;
 
 //Modes
 enum mode_frame{LEFT=0,RIGHT=1,STRAIGHT=2,STOP=3};
@@ -40,7 +46,7 @@ mode_frame mode = STRAIGHT;
 //DEBUG: Toggle functionality easily:
 bool MotorsOn = false;
 bool PRINT_SENSOR_STATES = false;
-bool PRINT_TURNING_DECISIONS = true;
+bool PRINT_TURNING_DECISIONS = false;
 
 void setup() {
   Serial.begin(9600);           // set up Serial library at 9600 bps
@@ -60,7 +66,9 @@ void setup() {
   // SERVO: attaches the servos on pin 6 to the servo object and reset rotation if needed
   leftservo.attach(9);  
   rightservo.attach(10);
+  open_claws();
   close_claws();
+  
   AFMS.begin();
 
   //ENABLE MOTOR TURNING
@@ -84,6 +92,15 @@ void loop(){
     amber_light_counter = 0;
     digitalWrite(1,HIGH);
     amber_light_on = true;
+    }
+
+  //junction detection locking:
+  if(JUNCTIONS_FOUND==2 && lock_junctions){
+    junction_locking_counter++;
+    if(junction_locking_counter >= 20000/turn_delay){
+      junction_locking_counter=0;
+      lock_junctions = false;
+      }
     }
 
   //READ SENSOR STATES
@@ -113,15 +130,31 @@ void loop(){
 
   //handle junction detection
   if(mode == STOP){
-    
+    Serial.print("JUNCTIONS FOUND: ");
     Serial.println(JUNCTIONS_FOUND);
     setmotorspeed(0,0);
     switch(JUNCTIONS_FOUND){
-      case 3: 
-      open_claws();
-      close_claws();
-      turn_angle(180);
-      break;
+      //case 1 is end of robot start area. 2 is block deposit junction
+      case 2:
+        lock_junctions = true;
+        break;
+      case 3: //at block collection area 
+        open_claws();
+        close_claws();
+        delay(100);
+        detect_metal();
+        turn_angle(180,true);
+        break;
+      //4 is junction at block collection area
+      case 5: //junction at block deposit area
+        if(metal_block){
+          turn_angle(90,false);
+          }
+        else{
+          turn_angle(90,true);
+          }
+        
+        //deposit area start
       }
       setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED); //Stop junction from being found again
       delay(500); //Stop junction from being found again
@@ -152,12 +185,17 @@ void forward(){
   right_motor->run(FORWARD);
   setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
   }
-  
+void backward(){
+  left_motor->run(BACKWARD);
+  right_motor->run(BACKWARD);
+  setmotorspeed(HIGH_MOTOR_SPEED,HIGH_MOTOR_SPEED);
+  } 
 //---------------------------------------------------------------------------------------------
 
 //Contains turn delay
 void calc_mode(){
   if(MotorsOn){
+    /*
     if(sensor_state[0]==1 && sensor_state[1]==1 && sensor_state[2]==0 && sensor_state[3]==0){
       mode = LEFT;
       if(PRINT_TURNING_DECISIONS){Serial.println("Decision: 1100");}
@@ -218,15 +256,69 @@ void calc_mode(){
       //turn_right();
       return;
       }
-    }
+    */
+    //HIGH PRIORITY STATES: Back sensors for detecting junctions and catching robot if going off line
+    if(sensor_state[0]==1 && sensor_state[1]==1 && sensor_state[2]==1 && sensor_state[3]==1){
+      if(PRINT_TURNING_DECISIONS){Serial.println("Decision: junction found");}
+      if(!lock_junctions){
+        mode = STOP;
+        JUNCTIONS_FOUND++;
+        forward();
+        delay(2000);
+        setmotorspeed(0,0);
+        return;
+        }
+      }
+    else if(sensor_state[0]==1 && sensor_state[3]==0){
+      mode = LEFT;
+      if(PRINT_TURNING_DECISIONS){Serial.println("Decision: back left on");}
+      turn_left();
+      return;
+      }
+    else if(sensor_state[0]==0 && sensor_state[3]==1){
+      mode = RIGHT;
+      if(PRINT_TURNING_DECISIONS){Serial.println("Decision: back right on");}
+      turn_right();
+      return;
+      }
+    //LOWER PRIORITY STATES
+    else if(sensor_state[1]==0 && sensor_state[2]==1){
+      mode = RIGHT;
+      if(PRINT_TURNING_DECISIONS){Serial.println("Decision: front right on");}
+      turn_right();
+      return;
+      }
+    else if(sensor_state[1]==0 && sensor_state[2]==0){
+      mode = RIGHT;
+      if(PRINT_TURNING_DECISIONS){Serial.println("both off");}
+      forward();
+      return;
+      }
+    else if(sensor_state[1]==1 && sensor_state[2]==0){
+      mode = LEFT;
+      if(PRINT_TURNING_DECISIONS){Serial.println("Decision: front left on");}
+      turn_left();
+      return;
+      }
+    else if(sensor_state[1]==1 && sensor_state[2]==1){
+      mode = RIGHT;
+      if(PRINT_TURNING_DECISIONS){Serial.println("both off");}
+      forward();
+      return;
+      }
   }
-
+}
 //-------------------------------------------------------------------------------
 
-void turn_angle(int degree){
+void turn_angle(int degree,bool clockwise){
   setmotorspeed(0,0);
   Serial.print("Turning 180");
-  turn_right();
+  if(clockwise){
+    turn_right();
+    }
+  else{
+    turn_left();
+  }
   if(degree==180){ //let the turning go for a bit before we check for the stop point
     delay(3000);
     }
@@ -237,7 +329,10 @@ void turn_angle(int degree){
     for(byte x=0;x<NUM_OF_SENSORS;x++){
       sensor_state[x] = digitalRead(sensor_pins[x]);
       }
-    if(sensor_state[0]==0 && sensor_state[1]==1 && sensor_state[2]==0 && sensor_state[3]==0){
+    if(clockwise && sensor_state[0]==0 && sensor_state[1]==1 && sensor_state[2]==0 && sensor_state[3]==0){
+      break;
+      }
+    if(!clockwise && sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==1 && sensor_state[3]==0){
       break;
       }
     }
@@ -262,4 +357,8 @@ void close_claws(){
     rightservo.write(180-pos);
     delay(15); 
     }
+  }
+//------------------------------------------------------------------------------
+void detect_metal(){
+     
   }
