@@ -176,7 +176,7 @@ void loop(){
   //junction detection locking:
   if(lock_junctions){
     junction_locking_counter++;
-    if(junction_locking_counter >= JUNCTION_LOCK_TIMES[JUNCTIONS_FOUND-2]/turn_delay){
+    if(junction_locking_counter >= JUNCTION_LOCK_TIMES[JUNCTIONS_FOUND-2]/turn_delay){  //get corresponding junction lock time from array. Used to set a different lock time depending on the robot location
       Serial.println("junction detection unlocked");
       junction_locking_counter=0;
       lock_junctions = false;
@@ -363,8 +363,7 @@ void backward_for(int ms){
 //Contains turn delay
 void calc_mode(){
   if(MotorsOn){
-    //HIGH PRIORITY STATES: Back sensors for detecting junctions and catching robot if going off line
-
+    //HIGH PRIORITY STATES: Junction detection, outer sensor states, and catching 'impossible' sensor states when going up the ramp.
     //junction
     if(sensor_state[0]==1 && sensor_state[1]==1 && sensor_state[2]==1 && sensor_state[3]==1){
       if(PRINT_TURNING_DECISIONS){Serial.println("Decision: junction found");}
@@ -437,7 +436,7 @@ void calc_mode(){
       return;
       }
       
-    //LOWER PRIORITY STATES: General line following -----------------
+    //LOWER PRIORITY STATES: General inner sensor line following -----------------
     else if(sensor_state[1]==0 && sensor_state[2]==1){
       mode = RIGHT;
       if(PRINT_TURNING_DECISIONS){Serial.println("Decision: front right on");}
@@ -482,24 +481,27 @@ void turn_angle(int degree,bool clockwise){
     turn_left();
   }
   setmotorspeed(MOTOR_SPEED,MOTOR_SPEED); //set it to turn fast
-  if(degree==180){ //let the turning go for a bit before we check for the stop point
+  //let the turning go for a bit before we check for the stop point:
+  if(degree==180){ 
     delay(turn_lock_time_180);
     }
   else if(degree==90){
     delay(turn_lock_time_90);
     }
+
+  //stop turning at specific sensor state configuration
   for(int i;i<100000;i++){
     read_sensors();
     if(clockwise && sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==1 && sensor_state[3]==0){
       break;
       }
-    if(clockwise && sensor_state[0]==1 && sensor_state[1]==0 && sensor_state[2]==0 && sensor_state[3]==0){
+    if(clockwise && sensor_state[0]==1 && sensor_state[1]==0 && sensor_state[2]==0 && sensor_state[3]==0){ //not optimal but added to 'abort' turning if above configuration missed
       break;
       }
     if(!clockwise && sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==1 && sensor_state[3]==0){
       break;
       }
-    if(!clockwise && sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==0 && sensor_state[3]==1){
+    if(!clockwise && sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==0 && sensor_state[3]==1){ //not optimal but added to 'abort' turning if above configuration missed
       break;
       }
     }
