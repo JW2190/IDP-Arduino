@@ -1,4 +1,44 @@
+//Metal detector based on pulse delay in LR circuit
+//Connect a coil beween pin 10 and pin 8,
+//a 100 Ohm resistor between pin 8 and ground,
+//a speaker in series with a 10muF capacitor between pin 12 and ground,
+//a reset-button between A0 and ground.
+//Reference coil: 60 turns, diameter 6cm, AWG26 (0.4mm) wire. L~300muH, R~2Ohm 
+//
+//R. Oldeman Oct 11 2020, CC BY-NC-SA 4.0 licence
+/*
 
+#define debug true
+
+//some parameters
+#define sensitivity  4500 //threshold as a fraction of reference      
+#define aimtime    160000 //aim for measurement every 160k cycles (=10ms) 
+#define LEDpulselen 16000 //length of the LED pulse in clock cycles
+#define cycles         40 //number of clock cycles reserved for calculations
+#define printfrac      10 //fraction of measurements printed when in debug mode
+
+//pin definitions - cannot change freely!
+#define pulsepin 3 //must be pin 10 - TIMER1B output
+#define probepin  2 //must be pin 8  - input capture pin
+#define rLEDpin  11 //if changed also need to update the direct-port writing
+#define gLEDpin  12 //if changed also need to update the direct-port writing
+
+//global variables - shared between main loop and measurement function
+long int imeas=0;  //counts the number of measurements performed 
+int absdiff;       //absolute value of difference wrt reference
+long int phase=0;  //tracks integral of absdiff 
+long int phasemax; //value at which the phase counter turns over
+int LEDcycles=0;   //number of cycles that the LED pin stays high
+int LEDcycle=0;    //cycle index of the LED pulse
+int averageRef = 6;//reference value of average diff to switch to metal state
+bool isMeasure=false;//whether the program is in the measurement period
+//averaging variables
+int nAverage = 100;         //define the number of points to calculate the average
+int diffReadings[100];      //set number = nAverage
+long sumReading;            //stores the sum of all readings to calculate average, spreads calulation over more cycles
+int index = 0;              //stores the index position in the average array for next cycle
+int average;                //stores final average calulation sumReading/nAverage
+*/
 //---------------------------------------------------------------------------------------------------------------
 
 #include <Servo.h>
@@ -80,6 +120,23 @@ void setup() {
     left_motor->run(FORWARD);
     right_motor->run(FORWARD);
     }
+
+/* 
+  //Metal detector:
+  noInterrupts(); //disable all inerrupts to avoid glitches
+  
+  pinMode(pulsepin,OUTPUT);
+  digitalWrite(pulsepin,LOW);
+  pinMode(probepin,INPUT);
+  pinMode(rLEDpin,OUTPUT);
+  pinMode(gLEDpin,OUTPUT);
+  digitalWrite(rLEDpin,LOW);
+  digitalWrite(gLEDpin,LOW);
+
+  //setup timer1 to FASTPWM on pin 10
+  TCCR1A=0B00100011;
+  TCCR1B=0B00011001;
+*/  
 }
 //------------------------------------------------------------------------------------------
 
