@@ -246,7 +246,7 @@ void backward_for(int ms){
 //Contains turn delay
 void follow_line(){
   if(MotorsOn){
-    //HIGH PRIORITY STATES: Back sensors for detecting junctions and catching robot if going off line
+  //HIGH PRIORITY STATES: Back sensors for detecting junctions and catching robot if going off line-----------------------------------------------------------------
 
     //junction
     if(sensor_state[0]==1 && sensor_state[1]==1 && sensor_state[2]==1 && sensor_state[3]==1){
@@ -259,7 +259,7 @@ void follow_line(){
       forward();
       }
 
-      //catch line sensor ramp errors ----------------------------------- defaulting to moving forward for any glitched sensor states:
+      //catch line sensor ramp errors. Defaulting to moving forward for any glitched sensor states: 
       else if(lock_junctions && sensor_state[0]==1 && sensor_state[1] ==1){ //catch slope lip line sensor error
       forward();
       delay(stay_forward_for);
@@ -288,9 +288,9 @@ void follow_line(){
       delay(stay_forward_for);
       return;
       }
-    //---------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------
 
-    //
+    //Outer sensor line following. Contains additional 'anti jitter' feature to stop robot repeatedly moving left and right at ramp.
     else if(sensor_state[0]==1 && sensor_state[3]==0){
       if(mode == RIGHT && lock_junctions){ //stop repeating moving left and right
         forward;
@@ -315,7 +315,7 @@ void follow_line(){
       return;
       }
       
-    //LOWER PRIORITY STATES: General line following -----------------
+  //LOWER PRIORITY STATES: General line following -----------------------------------------------------------------------------------------------
     else if(sensor_state[1]==0 && sensor_state[2]==1){
       mode = RIGHT;
       if(PRINT_TURNING_DECISIONS){Serial.println("Decision: front right on");}
@@ -345,7 +345,7 @@ void follow_line(){
       }
   }
 }
-//-------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 void handle_junctions(){
   Serial.print("JUNCTIONS FOUND: ");
     Serial.println(JUNCTIONS_FOUND);
