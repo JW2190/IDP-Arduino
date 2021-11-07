@@ -62,7 +62,7 @@ Servo rightservo;
 int closed_claw_angle = 23;
 
 // Motor Speeds Global
-const int MOTOR_SPEED = 255;
+const int MAX_MOTOR_SPEED = 255;
 const int MID_MOTOR_SPEED = 210;
 const int LEFT_MOTOR_SPEED = 254; //added biasing to left motor to stop drifting of robot
 
@@ -174,7 +174,7 @@ void loop(){
 
 
   //Calculate motor turning direction based on sensor inputs
-  calc_mode();
+  follow_line();
   
   //DEBUG: toggling motors on and off based on button input
   if(digitalRead(13)==1){
@@ -189,20 +189,21 @@ void loop(){
   //handle junction detection
   if(mode == STOP){
     handle_junctions();
-    setmotorspeed(MOTOR_SPEED,MOTOR_SPEED); //Stop junction from being found again
+    setmotorspeed(MAX_MOTOR_SPEED,MAX_MOTOR_SPEED); //Stop junction from being found again
     delay(500); //Stop junction from being found again
     }
-  delay(turn_delay);
+  delay(turn_delay); //base clock speed set for arduino
 }
 
 //---------------------------------------------------------------------------------------------
-//Currently not being used
+//Set motor speed
 void setmotorspeed(int L_speed,int R_speed){
   left_motor->setSpeed(L_speed);
   right_motor->setSpeed(R_speed);
   }
 
 //---------------------------------------------------------------------------------------------
+//Basic turning functions. motor speed is constantly set as a way to reset motor speeds if changed in other functions
 void turn_left(){
   left_motor->run(BACKWARD);
   right_motor->run(FORWARD); 
@@ -216,19 +217,19 @@ void turn_right(){
 void forward(){
   left_motor->run(FORWARD);
   right_motor->run(FORWARD);
-  setmotorspeed(LEFT_MOTOR_SPEED,MOTOR_SPEED);
+  setmotorspeed(LEFT_MOTOR_SPEED,MAX_MOTOR_SPEED);
   }
 void backward(){
   left_motor->run(BACKWARD);
   right_motor->run(BACKWARD);
-  setmotorspeed(MOTOR_SPEED,MOTOR_SPEED);
+  setmotorspeed(MAX_MOTOR_SPEED,MAX_MOTOR_SPEED);
   } 
 //---------------------------------------------------------------------------------------------
 //will move forward/backward for x time then stop
 void forward_for(int ms){
   left_motor->run(FORWARD);
   right_motor->run(FORWARD);
-  setmotorspeed(LEFT_MOTOR_SPEED,MOTOR_SPEED);
+  setmotorspeed(LEFT_MOTOR_SPEED,MAX_MOTOR_SPEED);
   delay(ms);
   setmotorspeed(0,0);
   }
@@ -236,29 +237,29 @@ void forward_for(int ms){
 void backward_for(int ms){
   left_motor->run(BACKWARD);
   right_motor->run(BACKWARD);
-  setmotorspeed(MOTOR_SPEED,MOTOR_SPEED);
+  setmotorspeed(MAX_MOTOR_SPEED,MAX_MOTOR_SPEED);
   delay(ms);
   setmotorspeed(0,0);
   }
 //---------------------------------------------------------------------------------------------
 
 //Contains turn delay
-void calc_mode(){
+void follow_line(){
   if(MotorsOn){
     //HIGH PRIORITY STATES: Back sensors for detecting junctions and catching robot if going off line
 
     //junction
     if(sensor_state[0]==1 && sensor_state[1]==1 && sensor_state[2]==1 && sensor_state[3]==1){
       if(PRINT_TURNING_DECISIONS){Serial.println("Decision: junction found");}
-      else if(!lock_junctions){
+      if(!lock_junctions){ //only add to junctions and set mode to stop if junction lock is not on
         mode = STOP;
         JUNCTIONS_FOUND++;
-        forward();
         return;
         }
+      forward();
       }
 
-      //catch line sensor ramp errors -----------------------------------
+      //catch line sensor ramp errors ----------------------------------- defaulting to moving forward for any glitched sensor states:
       else if(lock_junctions && sensor_state[0]==1 && sensor_state[1] ==1){ //catch slope lip line sensor error
       forward();
       delay(stay_forward_for);
@@ -319,7 +320,6 @@ void calc_mode(){
       mode = RIGHT;
       if(PRINT_TURNING_DECISIONS){Serial.println("Decision: front right on");}
       turn_right();
-      //Risky, remove if necessary ==========================================
       return;
       }
       
@@ -351,21 +351,24 @@ void handle_junctions(){
     Serial.println(JUNCTIONS_FOUND);
     setmotorspeed(0,0);
     switch(JUNCTIONS_FOUND){
-      //case 1 is end of robot start area. 2 is block deposit junction
+      //case 1 is end of robot start area. case 2 is block deposit junction
       case 2:
         lock_junctions = true;
-        forward_for(1000);//REMOVE IF NEEDED
-
-        mode = STRAIGHT;
+        forward_for(1000);//move past this junction
+        mode = STRAIGHT; //reset mode
         break;
       case 3: //at block collection area
+      
+        //safely open claws
         backward_for(1500);
         open_claws(10,180,5);
         forward_for(1800);
-        if(deposited == 0){
+
+        if(deposited == 0){ //saving time as location of first block known
           close_claws(180,60,15);
           }
         else{
+          //sweep entire block collection area
           follow_line_for(850);
           forward_for(100); //reset any decisions to turn left or right to forwards
         
@@ -375,40 +378,43 @@ void handle_junctions(){
         
           }
         
-        backward_for(1200);
-        delay(700);
+        backward_for(1200); //draggging block to centre of claws
+        delay(700); //awating reduction in vibration before metal detector mean value set
         
         //metal detector calibration
         avgsum = 0; //asking new reference to be set
         metal_detect_loop(); //set new reference
         
-        close_claws(60,closed_claw_angle,15);
-        //delay(500);
+        close_claws(60,closed_claw_angle,15); //bring block into electromagnet
 
         //detect metal
         isMeasure = true;
         while(isMeasure){
           metal_detect_loop();
           }
-    
-        
+
+        //turn and set junction lock
         turn_angle(180,true);
         lock_junctions=true;
         JUNCTIONS_FOUND = 3; //in case the robot finds the same junction again
-        mode = STRAIGHT;
+        mode = STRAIGHT; //reset mode
         break;
-      //4 is junction at block collection area if we go inside area
+
       case 4: //junction at block deposit area
-        forward_for(500); //this line is to get the robot forward so it rotates aligned with the line
+        forward_for(500); //get the robot forward so it rotates aligned with the line
         if(metal_block){
-          turn_90_to_deposit(true);
+          turn_90_to_deposit(true); //rotate to red box
           }
         else{
-          turn_90_to_deposit(false);
+          turn_90_to_deposit(false); //rotate to blue box
           }
+        
+        //safely open claws
         backward_for(600);
         setmotorspeed(0,0);
         open_claws(0,120,15);
+
+        //push block into deposit area
         forward_for(1100+200);
         backward_for(2000+200);
         close_claws(120,0,15);
@@ -419,6 +425,8 @@ void handle_junctions(){
         digitalWrite(gLEDpin, LOW);
         
         deposited++;
+
+        //turn to go back to block collection
         if(deposited < maxtodeposit){
           if(metal_block){
             turn_angle(90,true);
@@ -429,6 +437,8 @@ void handle_junctions(){
           JUNCTIONS_FOUND = 2;
           lock_junctions = true;
           }
+
+        //turn to go to start zone
         else{
           if(metal_block){
             turn_angle(90,false);
@@ -438,12 +448,11 @@ void handle_junctions(){
             }
           JUNCTIONS_FOUND = 4;
           }
-          mode = STRAIGHT;
+          mode = STRAIGHT; //reset mode
         break;
       case 5: // at starting zone. stop here
         forward_for(1600);
         delay(10000000); //wait in starting area
-        //deposit area start
       }
   }
 //-------------------------------------------------------------------------------
@@ -459,13 +468,15 @@ void turn_angle(int degree,bool clockwise){
     Serial.println("anticlockwise");
     turn_left();
   }
-  setmotorspeed(MOTOR_SPEED,MOTOR_SPEED); //set it to turn fast
-  if(degree==180){ //let the turning go for a bit before we check for the stop point
+  setmotorspeed(MAX_MOTOR_SPEED,MAX_MOTOR_SPEED); //set it to turn fast
+  if(degree==180){ //let it turn for x seconds before we check for the stop point
     delay(turn_lock_time_180);
     }
   else if(degree==90){
     delay(turn_lock_time_90);
     }
+
+  //read sensors and stop at specific cases
   for(int i;i<100000;i++){
     read_sensors();
     if(clockwise && sensor_state[0]==0 && sensor_state[1]==0 && sensor_state[2]==1 && sensor_state[3]==0){
@@ -481,10 +492,12 @@ void turn_angle(int degree,bool clockwise){
       break;
       }
     }
+  //reset rotation direction of motors
   forward();
   setmotorspeed(0,0);
   }
 //------------------------------------------------------------------------------
+//separate function as sensor states are not being looked for. A specific time to rotate is set
 void turn_90_to_deposit(bool clockwise){
   setmotorspeed(0,0);
   Serial.print("Turning 180");
@@ -494,7 +507,7 @@ void turn_90_to_deposit(bool clockwise){
   else{
     turn_left();
     }
-  setmotorspeed(MOTOR_SPEED,MOTOR_SPEED); //set it to turn fast
+  setmotorspeed(MAX_MOTOR_SPEED,MAX_MOTOR_SPEED); //set it to turn fast
   delay(turn_time_exact_90);
   
 }
@@ -503,15 +516,16 @@ void open_claws(int open_from, int open_to,int timestep){
     for (int pos = open_from; pos <= open_to; pos += 1) { 
     // in steps of 1 degree
     leftservo.write(pos);
-    rightservo.write(190-pos);// tell servo to go to position in variable 'pos'
-    delay(timestep);     }// waits 15ms for the servo to reach the position
+    rightservo.write(190-pos); //was 180-pos but 10 added to make claws meet in exact centre when both partially closed
+    delay(timestep); // waits set time for the servo to reach the position
+    }
   }
 //------------------------------------------------------------------------------
 void close_claws(int close_from,int close_to,int timestep){
-  for (int pos = close_from; pos >= close_to; pos -= 1) { // goes from 180 degrees to 0 degrees
-    leftservo.write(pos);              // tell servo to go to position in variable 'pos'
-    rightservo.write(190-pos);
-    delay(timestep); 
+  for (int pos = close_from; pos >= close_to; pos -= 1) {
+    leftservo.write(pos);              
+    rightservo.write(190-pos); 
+    delay(timestep); // waits set time for the servo to reach the position
     }
   }
 //------------------------------------------------------------------------------
@@ -524,7 +538,7 @@ void read_sensors(){
 void follow_line_for(int tme){
   for(int i=0;i<tme/turn_delay;i++){
     read_sensors();
-    calc_mode();
+    follow_line();
     delay(turn_delay);
     }
   }
@@ -573,21 +587,7 @@ void metal_detect_loop(){
   
     //subtract minimum and maximum value to remove spikes
     sum-=minval; sum-=maxval;
-    
-    //process
-  //  if (sumsum==0) sumsum=sum<<6; //set sumsum to expected value
-  //  long int avgsum=(sumsum+32)>>6; 
-  //  diff=sum-avgsum;
-  //  if (abs(diff)<avgsum>>10){      //adjust for small changes
-  //    sumsum=sumsum+sum-avgsum;
-  //    skip=0;
-  //  } else {
-  //    skip++;
-  //  }
-  //  if (skip>64){     // break off in case of prolonged skipping
-  //    sumsum=sum<<6;
-  //    skip=0;
-  //  }
+
     if (avgsum == 0) avgsum=sum+20;//+40; //calibration for when line-by-line printing enabled at script end
     diff=sum-avgsum;
 
@@ -633,10 +633,6 @@ void metal_detect_loop(){
       }
     }
     if (false){
-  //    Serial.print(minval); 
-  //    Serial.print(" ");
-  //    Serial.print(maxval); 
-  //    Serial.print(" ");
       Serial.print(sum); 
       Serial.print(" ");
       Serial.print(avgsum); 
